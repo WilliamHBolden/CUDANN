@@ -59,34 +59,6 @@ void Display::destroySO()
 
 void Display::displayFrame(GLFWwindow* window)
 {
-	/*
-	//Map needed CUDA resources and render
-	cudaGraphicsMapResources(1, &cudavResource);
-
-	cudaArray_t cudavArray;
-	cudaGraphicsSubResourceGetMappedArray(&cudavArray, cudavResource, 0, 0);
-
-	cudaResourceDesc cudavArrayResourceDesc;
-	cudavArrayResourceDesc.resType = cudaResourceTypeArray;
-	cudavArrayResourceDesc.res.array.array = cudavArray;
-	
-	cudaSurfaceObject_t cudavSurfaceObject;
-	cudaCreateSurfaceObject(&cudavSurfaceObject, &cudavArrayResourceDesc);
-
-
-
-	//render.renderFrame(cudavSurfaceObject);
-
-
-
-
-	//Unmap resources
-	cudaDestroySurfaceObject(cudavSurfaceObject);
-	cudaGraphicsUnmapResources(1, &cudavResource);
-	cudaStreamSynchronize(0);
-	*/
-	
-	//Display with OpenGL
 	glBindTexture(GL_TEXTURE_2D,vtex);
 	
 	glBegin(GL_QUADS);

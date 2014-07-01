@@ -30,67 +30,25 @@ int main()
 	displayWindow.createRenderer();
 
 
-	/*
-	int testset[4][3] =
-	{
-		{0, 0, 0},
-		{1, 0, 1},
-		{0, 1, 1},
-		{1, 1, 0}
-	};
+//	float* devNeuronOutpus;
+//	float* devNeuronErrors;
+//	float* devNeuronWeights;
+	int numLayers = 3;
 
-	float input[2][2];
+	int layerSize[3] = {2 + 1, 5 + 1 ,1};  //+1 for biases
 
-	float bias0 = (rand()%10000 - 5000)/10000.0f;
-
-	for(int x = 0; x < 2; x++)
-	{
-		for(int y = 0; y < 2; y++)
-		{
-			input[x][y] = (rand()%10000 - 5000)/10000.0f;   //-0.5 0.5
-		}
-	}
-
-	float hidden[2][1];
-	float bias1 = (rand()%10000 - 5000)/10000.0f;
-
-	for(int x = 0; x < 2; x++)
-	{
-		for(int y = 0; y < 1; y++)
-		{
-			input[x][y] = (rand()%10000 - 5000)/10000.0f;   //-0.5 0.5
-		}
-	}
+	createNN(layerSize, numLayers);
 	
-	float out;
-
-
-	float inputOutput[2];
-	float hiddenOutput[2];
-	float finalOutput;
-
-	while(true)
-	{
-		for(int i = 0; i < 4; i++)
-		{
-			inputOutput[0] = 
-
-
-		}
-
-
-
-	}
-	*/
-
-
-
-
 
 	while(true)
 	{
 
-		display(displayWindow.getCUDASurfaceObject(), WIDTH, HEIGHT);
+	//	cudaSurfaceObject_t temp = displayWindow.getCUDASurfaceObject();
+
+		display(displayWindow.getCUDASurfaceObject(), WIDTH, HEIGHT, layerSize, numLayers);
+
+
+
 
 		displayWindow.destroySO();
 		displayWindow.displayFrame(window);
