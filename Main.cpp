@@ -33,9 +33,12 @@ int main()
 //	float* devNeuronOutpus;
 //	float* devNeuronErrors;
 //	float* devNeuronWeights;
-	int numLayers = 3;
 
-	int layerSize[3] = {2 + 1, 5 + 1 ,1};  //+1 for biases
+	#define NUM 3
+
+	int numLayers = NUM;
+
+	int layerSize[NUM] = {2 + 1, 5 + 1, 1};  //+1 for biases
 
 	createNN(layerSize, numLayers);
 	

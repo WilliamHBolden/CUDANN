@@ -162,6 +162,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <CudaCompile Include="NeuralNetwork.cu">
       <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">compute_30,sm_30</CodeGeneration>
+      <CodeGeneration Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">compute_30,sm_30</CodeGeneration>
     </CudaCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
