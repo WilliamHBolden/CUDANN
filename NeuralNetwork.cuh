@@ -10,4 +10,6 @@ void display(cudaSurfaceObject_t cudaSurfaceObject, int width, int height, int* 
 
 void createNN(int* layerSize, int numLayers);
 
+
+
 #endif

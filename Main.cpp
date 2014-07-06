@@ -38,7 +38,7 @@ int main()
 
 	int numLayers = NUM;
 
-	int layerSize[NUM] = {2 + 1, 5 + 1, 1};  //+1 for biases
+	int layerSize[NUM] = {2 + 1, 600 + 1, 1};  //+1 for biases
 
 	createNN(layerSize, numLayers);
 	
