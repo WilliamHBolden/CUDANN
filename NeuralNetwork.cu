@@ -7,10 +7,7 @@
 #include <cstdlib>
 #include <time.h> 
 
-
 __global__ void cuDisplay(cudaSurfaceObject_t cudaSurfaceObject);
-
-float learningWeight;
 
 
 __device__ float dot(float* v0, float* v1, int length)
@@ -95,7 +92,6 @@ __device__ __host__ int getWeightOffset(int* layerSize, int layer, int numLayers
 	}
 }
 
-
 __device__ void serialNNOutput(float* neuronOutputs, float* neuronWeights, int* layerSize, int numLayers)
 {
 	//Compute the outputs for the first layer
@@ -134,66 +130,6 @@ __device__ void serialNNOutput(float* neuronOutputs, float* neuronWeights, int* 
 		}
 	}
 }
-
-__device__ void serialNNBackprop(float* neuronOutputs, float* neuronWeights, float* neuronError, int* layerSize, int numLayers, float* targetOutput, float learningRate)
-{
-	int offset = getArrayOffset(layerSize, numLayers-1);
-	int weightOffset = getWeightOffset(layerSize, numLayers-2, numLayers);
-	int lowerOffset = getArrayOffset(layerSize, numLayers-2);
-	
-	for(int n = 0; n < layerSize[numLayers-1]; n++) //For every neuron in the final layer
-	{
-		neuronError[offset + n] = FSCactivationFunctionDerivative(neuronOutputs[offset + n]) * (targetOutput[n] - neuronOutputs[offset + n]);
-	}
-
-	//update weights
-	/*
-	for(int x = 0; x < layerSize[numLayers-1]; x++)
-	{
-		for(int y = 0; y < layerSize[numLayers-2]; y++)
-		{
-			updateWeight(&neuronWeights[weightOffset + x* layerSize[numLayers -2] + y], neuronError[offset + x], neuronOutputs[lowerOffset + y], learningRate);
-		}
-	}
-	
-	*/
-	for(int i = numLayers -1; i >0; i--)   /// > 1???? or 0
-	{
-		offset = getArrayOffset(layerSize, i);
-		lowerOffset = getArrayOffset(layerSize, i-1);
-		weightOffset = getWeightOffset(layerSize, i-1, numLayers);
-
-		//find error
-		for(int n =0; n < layerSize[i-1]; n++)
-		{
-			neuronError[lowerOffset + n] = dot(&neuronError[offset], &neuronWeights[weightOffset + n*(layerSize[i])], layerSize[i]);
-
-			//Dot of the weight between A and layer K and the error in K
-			if(i > 0)
-			neuronError[lowerOffset + n]*= activationFunctionDerivative(neuronOutputs[lowerOffset + n]);
-			else
-			neuronError[lowerOffset + n]*= activationFunctionDerivative(activationFunction(neuronOutputs[lowerOffset + n]));
-		}
-
-		//update weigths
-		for(int x = 0; x < layerSize[i]; x++)
-		{
-			for(int y = 0; y < layerSize[i-1]; y++)
-			{
-				updateWeight(&neuronWeights[weightOffset + x* layerSize[i -1] + y], neuronError[offset + x], neuronOutputs[lowerOffset + y], learningRate);
-			}
-		}
-	}
-	/*
-	float gerror = 0;
-	for(int i =0; i <7; i++)
-	{
-		gerror += neuronError[i] * neuronError[i];
-	}
-	*/
-	//printf("Global error: %f\n", gerror);
-}
-
 
 /*
 	x dim minimum = layerSize[currentLayer+1]
