@@ -46,17 +46,10 @@ int main()
 	while(true)
 	{
 
-	//	cudaSurfaceObject_t temp = displayWindow.getCUDASurfaceObject();
 
 		display(displayWindow.getCUDASurfaceObject(), WIDTH, HEIGHT, layerSize, numLayers);
-
-
-
-
 		displayWindow.destroySO();
 		displayWindow.displayFrame(window);
-
-//		std::cout << "hi";
 	}
 
 
