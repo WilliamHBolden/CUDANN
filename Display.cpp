@@ -24,14 +24,6 @@ void Display::initRenderTexture()
 	cudaGraphicsGLRegisterImage(&cudavResource, vtex, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsWriteDiscard);
 }
 
-void Display::createRenderer()
-{
-	//render = Renderer();
-	//render.setResolution(width, height);
-}
-
-
-
 cudaSurfaceObject_t Display::getCUDASurfaceObject()
 {
 	cudaGraphicsMapResources(1, &cudavResource);

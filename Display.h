@@ -14,10 +14,8 @@ class Display
 {
 public:
 	Display(GLFWwindow* window);
-	
 	void initRenderTexture();
 	void resizeWindow(GLFWwindow* window);
-	void createRenderer();
 	void displayFrame(GLFWwindow* window);
 	cudaSurfaceObject_t getCUDASurfaceObject();
 	void destroySO();

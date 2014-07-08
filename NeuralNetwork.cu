@@ -137,6 +137,9 @@ __device__ void serialNNOutput(float* neuronOutputs, float* neuronWeights, int* 
 */
 __global__ void atomicParallelNNOutput(float* neuronOutputs, float* neuronWeights, int* layerSize, int numLayers, int currentLayer)
 {
+
+	//@TODO: shared memory, first segment for neuron outputs in next layer, second segment for neuron outputs in current layer
+
 	int n = blockDim.x * blockIdx.x + threadIdx.x;
 	int i = blockDim.y * blockIdx.y + threadIdx.y;
 
@@ -178,12 +181,6 @@ __global__ void applyActivationFunction(float* neuronOutputs, int* layerSize, in
 	}
 }
 
-
-
-
-
-
-
 __global__ void parallelNNOutput(float* neuronOutputs, float* neuronWeights, int* layerSize, int numLayers, int currentLayer)
 {
 	int n = blockDim.x * blockIdx.x + threadIdx.x;
@@ -223,6 +220,8 @@ __global__ void calculateOutputLayerError(float* neuronOutputs, float* neuronErr
 */
 __global__ void calculateError(float* neuronOutputs, float* neuronError, float* neuronWeights, int* layerSize, int numLayers, int currentLayer)
 {
+	//@TODO shared memory for neuronOutputs and neuronError
+
 	int n = blockDim.x * blockIdx.x + threadIdx.x;
 	int i = blockDim.y * blockIdx.y + threadIdx.y;
 
@@ -232,14 +231,33 @@ __global__ void calculateError(float* neuronOutputs, float* neuronError, float* 
 
 	if(n < layerSize[currentLayer -1] && i < layerSize[currentLayer])
 	{
-		if(currentLayer > 0)
+
+		if(true)
 		{
-			atomicAdd(&neuronError[lowerOffset + n], activationFunctionDerivative(neuronOutputs[lowerOffset + n])* (neuronError[offset] * neuronWeights[weightOffset + n*(layerSize[currentLayer])]));
+			if(currentLayer > 0)
+			{
+				atomicAdd(&neuronError[lowerOffset + n], activationFunctionDerivative(neuronOutputs[lowerOffset + n])* (neuronError[offset+i] * neuronWeights[weightOffset + n*(layerSize[currentLayer])+i]));
+			}
+			else
+			{
+				atomicAdd(&neuronError[lowerOffset + n], activationFunctionDerivative(activationFunction(neuronOutputs[lowerOffset + n]))* (neuronError[offset+i] * neuronWeights[weightOffset + n*(layerSize[currentLayer])+i]));
+			}
 		}
 		else
 		{
-			atomicAdd(&neuronError[lowerOffset + n], activationFunctionDerivative(activationFunction(neuronOutputs[lowerOffset + n]))* (neuronError[offset] * neuronWeights[weightOffset + n*(layerSize[currentLayer])]));
+			//The same only 1 neuronError and n layer sizes are used in these calculations. This is terribly incorrect but the neural network still manages to learn if this code is used!
+			// Conclusion: Neural Networks are magic
+			if(currentLayer > 0)
+			{
+				atomicAdd(&neuronError[lowerOffset + n], activationFunctionDerivative(neuronOutputs[lowerOffset + n])* (neuronError[offset] * neuronWeights[weightOffset + n*(layerSize[currentLayer])]));
+			}
+			else
+			{
+				atomicAdd(&neuronError[lowerOffset + n], activationFunctionDerivative(activationFunction(neuronOutputs[lowerOffset + n]))* (neuronError[offset] * neuronWeights[weightOffset + n*(layerSize[currentLayer])]));
+			}
 		}
+
+
 	}
 }
 
@@ -284,10 +302,20 @@ __global__ void cuDisplay(cudaSurfaceObject_t cudaSurfaceObject, int width, int 
 
 			float fy = (float)(y-300);
 
-			fx /= 50.0f;
-			fy /= 50.0f;
+			fx /= 25.0f;
+			fy /= 25.0f;
 
-			char ocolx = (char)(200.0f*(((__sinf(fx * fy)+1)/2)/1.25f +0.1f));
+
+
+			char ocolx = (char)(200.0f*(((__sinf(fx*fy)+1)/2)/1.25f +0.1f));
+
+		//	int tx = (x-300);
+		//	int ty = (x-300);
+
+		//	no[0]= (float)((tx*ty)%314)/25.0f;
+
+		//	char ocolx = (char)(200.0f*(((__sinf((float)((tx*ty)%314)/(25.0f*25.0f))+1)/2)/1.25f +0.1f));
+
 		//	char ocoly = (char)(fy*200.0f);
 
 		//	((__sinf(x * y)+1)/2)/1.25f +0.1f;
@@ -308,8 +336,11 @@ __global__ void cuDisplay(cudaSurfaceObject_t cudaSurfaceObject, int width, int 
 
 			float fy = (float)(y-300);
 
-			fx /= 100.0f;
-			fy /= 100.0f;
+
+
+
+			fx /= 25.0f;
+			fy /= 25.0f;
 
 			int arrayLength = getArrayOffset(layerSize,numLayers);
 			float* no = (float*)malloc(arrayLength * sizeof(float));
@@ -317,6 +348,8 @@ __global__ void cuDisplay(cudaSurfaceObject_t cudaSurfaceObject, int width, int 
 			{
 				no[i] = neuronOutputs[i];
 			}
+
+
 
 			no[0]= fx;
 			no[1]= fy;
@@ -332,7 +365,7 @@ __global__ void cuDisplay(cudaSurfaceObject_t cudaSurfaceObject, int width, int 
 
 			if((fx == 0 || fx == 1.0f) && (fy == 0 || fy == 1.0f))
 			{
-				out = make_uchar4(200, 10, 10, 255);
+			//	out = make_uchar4(200, 10, 10, 255);
 			}
 
 			free(no);
@@ -342,7 +375,6 @@ __global__ void cuDisplay(cudaSurfaceObject_t cudaSurfaceObject, int width, int 
 
 	}
 }
-
 
 /*
 	Sets the output of bias neurons to 1 and the output of other neurons to 0
@@ -418,8 +450,8 @@ void setTrainingData(float* inputs, float* outputs,int inputSize, int numItems, 
 	cudaMalloc((void**)&devTrainingInputs, sizeof(float)*inputSize*numItems);
 	cudaMalloc((void**)&devTrainingOutputs, sizeof(float)*numOutputs*numItems);
 
-	cudaMemcpy(devTrainingInputs, devTrainingOutputs, sizeof(float)*inputSize*numItems, cudaMemcpyHostToDevice);
-	cudaMemcpy(devTrainingInputs, devTrainingOutputs, sizeof(float)*numOutputs*numItems, cudaMemcpyHostToDevice);
+	cudaMemcpy(devTrainingInputs, inputs, sizeof(float)*inputSize*numItems, cudaMemcpyHostToDevice);
+	cudaMemcpy(devTrainingOutputs, outputs, sizeof(float)*numOutputs*numItems, cudaMemcpyHostToDevice);
 
 	devInputSize = inputSize;
 	devNumItems = numItems;
@@ -449,12 +481,12 @@ void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learn
 		for(int n = 0; n < devNumItems; n++)
 		{
 			cudaMemcpy(devNeuronOutputs, devDefaultOutputs, sizeof(float)*outputArrayLength, cudaMemcpyDeviceToDevice); //set devNeuronOutputs to defaults
-			cudaMemcpy(devNeuronOutputs, &devTrainingInputs[n*devInputSize], sizeof(float)*devInputSize, cudaMemcpyHostToDevice); //Set the inputs
+			cudaMemcpy(devNeuronOutputs, devTrainingInputs + n*devInputSize, sizeof(float)*devInputSize, cudaMemcpyDeviceToDevice); //Set the inputs
 
 			for(int i = 0; i < numLayers -1; i++)
 			{
 				blockSize = dim3(16, 16);
-				dim3 gridSize = dim3(getGridSize(hostLayerSize[i+1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
+				gridSize = dim3(getGridSize(hostLayerSize[i+1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
 
 				atomicParallelNNOutput<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devLayerSize, numLayers, i);
 				applyActivationFunction<<<getGridSize(hostLayerSize[i+1], 128), 128>>>(devNeuronOutputs, devLayerSize, numLayers, i);
@@ -473,7 +505,7 @@ void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learn
 				gridSize = dim3(getGridSize(hostLayerSize[i-1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
 
 				calculateError<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronErrors, devNeuronWeights, devLayerSize, numLayers, i);
-				updateWeights<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devNeuronErrors, devLayerSize, numLayers, i, 0.8);
+				updateWeights<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devNeuronErrors, devLayerSize, numLayers, i, learningRate);
 			}
 		}
 	}
@@ -484,10 +516,9 @@ void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learn
 /*
 	layerSize : host array of layer sizes
 	numLayers : number of layers
-	iterations : the number of iterations through the input set
+	iterations : the number of iterations through random items in the input set
 	learningRate : how fast the neural net learns, set between 0.3 and 0.8
 */
-
 void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate)
 {
 	int outputArrayLength = getArrayOffset(hostLayerSize,numLayers);
@@ -497,15 +528,16 @@ void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learni
 		dim3 blockSize;
 		dim3 gridSize;
 
-		int n = rand() % devNumItems;
+		//RAND_MAX
+		int n = (rand() * (RAND_MAX+1) + rand())% devNumItems;
 
 		cudaMemcpy(devNeuronOutputs, devDefaultOutputs, sizeof(float)*outputArrayLength, cudaMemcpyDeviceToDevice); //set devNeuronOutputs to defaults
-		cudaMemcpy(devNeuronOutputs, &devTrainingInputs[n*devInputSize], sizeof(float)*devInputSize, cudaMemcpyHostToDevice); //Set the inputs
+		cudaMemcpy(devNeuronOutputs, devTrainingInputs + n*devInputSize, sizeof(float)*devInputSize, cudaMemcpyDeviceToDevice); //Set the inputs
 
 		for(int i = 0; i < numLayers -1; i++)
 		{
 			blockSize = dim3(16, 16);
-			dim3 gridSize = dim3(getGridSize(hostLayerSize[i+1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
+			gridSize = dim3(getGridSize(hostLayerSize[i+1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
 
 			atomicParallelNNOutput<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devLayerSize, numLayers, i);
 			applyActivationFunction<<<getGridSize(hostLayerSize[i+1], 128), 128>>>(devNeuronOutputs, devLayerSize, numLayers, i);
@@ -524,7 +556,7 @@ void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learni
 			gridSize = dim3(getGridSize(hostLayerSize[i-1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
 
 			calculateError<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronErrors, devNeuronWeights, devLayerSize, numLayers, i);
-			updateWeights<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devNeuronErrors, devLayerSize, numLayers, i, 0.8);
+			updateWeights<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devNeuronErrors, devLayerSize, numLayers, i, learningRate);
 		}
 		
 	}
