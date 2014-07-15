@@ -7,10 +7,12 @@
     <ClCompile Include="Display.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="FileUtil.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Display.h" />
     <ClInclude Include="NeuralNetwork.cuh" />
     <ClInclude Include="Timer.h" />
+    <ClInclude Include="FileUtil.h" />
   </ItemGroup>
 </Project>
