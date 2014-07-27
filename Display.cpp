@@ -9,7 +9,6 @@ Display::Display(GLFWwindow* window)
 void Display::initRenderTexture()
 {
 	glewInit();
-
 	glEnable(GL_TEXTURE_2D);
 	glGenTextures(1, &vtex);
 

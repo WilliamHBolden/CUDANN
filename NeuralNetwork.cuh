@@ -1,16 +1,28 @@
 #ifndef NEURALNETWORK_CUH
 #define NEURALNETWORK_CUH
 
+
+struct NNInfo
+{
+	int numSets;
+	int setSize;
+	int numOutputs;
+	float* weights;
+	int numWeights;
+};
+
 void display(cudaSurfaceObject_t cudaSurfaceObject, int width, int height, int* layerSize, int numLayers);
 void createNN(int* layerSize, int numLayers);
 
 /*
 	inputs : a flat array of input data
-	inputSize : number of floats in the array making up one input
+	setSize : number of floats in the array making up one input
 	numItems : total number of inputs
 	numOutputs : number of outputs per input
 */
-void setTrainingData(float* inputs, float* outputs,int inputSize, int numItems, int numOutputs);
+void setTrainingData(float* inputs, float* outputs,int setSize, int numItems, int numOutputs);
+
+void setTrainingData(float* inputs, float* outputs, NNInfo info);
 
 /*
 	layerSize : host array of layer sizes

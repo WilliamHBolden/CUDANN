@@ -14,5 +14,6 @@
     <ClInclude Include="NeuralNetwork.cuh" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="FileUtil.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
 </Project>
