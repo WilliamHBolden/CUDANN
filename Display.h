@@ -7,8 +7,8 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include <gl/GL.h>
-#include <gl/GLU.h>
+#include <GL/GL.h>
+#include <GL/GLU.h>
 
 class Display
 {
