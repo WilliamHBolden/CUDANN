@@ -1,6 +1,7 @@
 #include "FileUtil.h"
 #include <fstream>
 #include <iostream>
+#include <string.h>
 
 union bits
 {
