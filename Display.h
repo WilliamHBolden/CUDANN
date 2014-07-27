@@ -5,10 +5,10 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 
-#include <GL\glew.h>
-#include <GLFW\glfw3.h>
-#include <gl\GL.h>
-#include <gl\GLU.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <gl/GL.h>
+#include <gl/GLU.h>
 
 class Display
 {
