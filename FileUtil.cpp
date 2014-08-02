@@ -23,7 +23,11 @@ int reverseBytes(int i)
 	n.c[1] = n.c[2];
 	n.c[2] = swap;
 
+
+
 	return n.n;
+
+	//return ((i & 0xFF) << 24) | ((i & 0xFF00) << 8 | ((i & 0xFF0000) >> 8) | ((i & 0xFF000000) >> 24));
 }
 
 void loadMNIST(const char* imageFilepath, const char* labelFilepath, float** inputData, float** outputData, int* numSets, int* setSize, int* outputsPerSet)

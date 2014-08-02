@@ -36,8 +36,8 @@ int main()
 	int outputsPerSet;
 
 	
-	loadMNIST("Data\\timages.mnist", 
-		"Data\\tlabels.mnist",
+	loadMNIST("Data/timages.mnist", 
+		"Data/tlabels.mnist",
 		&inputs, &outputs, 
 		&numSets, &setSize, &outputsPerSet);
 

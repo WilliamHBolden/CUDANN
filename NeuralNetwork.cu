@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <time.h> 
-
-
 __device__ __host__ float dot(float* v0, float* v1, int length)
 {
 	float total = 0;
@@ -452,6 +450,17 @@ int getGridSize(unsigned int minimumSize, unsigned int blockSize)
 	return (minimumSize + blockSize - 1)/blockSize;
 }
 
+void forwardPropagation()
+{
+
+}
+
+void backPropagation()
+{
+
+	
+}
+
 /*
 	layerSize : host array of layer sizes
 	numLayers : number of layers
@@ -516,7 +525,10 @@ void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learni
 		dim3 gridSize;
 
 		//RAND_MAX
-		int n = (rand() * (RAND_MAX+1) + rand())% devNumItems;
+		unsigned int n = (unsigned int)((rand() * (RAND_MAX+1) + rand()))% devNumItems;
+
+		//n = 30;
+
 
 		cudaMemcpy(devNeuronOutputs, devDefaultOutputs, sizeof(float)*outputArrayLength, cudaMemcpyDeviceToDevice); //set devNeuronOutputs to defaults
 		cudaMemcpy(devNeuronOutputs, devTrainingInputs + n*devSetSize, sizeof(float)*devSetSize, cudaMemcpyDeviceToDevice); //Set the inputs
@@ -538,9 +550,12 @@ void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learni
 
 		calculateOutputLayerError<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronErrors, &devTrainingOutputs[n*devNumOutputs], devLayerSize, numLayers);
 
-
-		if(rand() % 10000 == 0)
+		if(rand() % 1000 == 0)
 		{
+			printf("Index: %d\n", n);
+
+			printf("Size: %d\n", devNumItems);
+
 			float* expected = (float*)malloc(sizeof(float) * 10);
 			float* actual = (float*)malloc(sizeof(float) * 10);
 
