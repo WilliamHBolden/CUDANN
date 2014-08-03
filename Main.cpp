@@ -35,13 +35,16 @@ int main()
 	int setSize;
 	int outputsPerSet;
 
-	
 	loadMNIST("Data/timages.mnist", 
 		"Data/tlabels.mnist",
 		&inputs, &outputs, 
 		&numSets, &setSize, &outputsPerSet);
 
 	printf("%f", outputs[5]);
+
+	FFNet network = FFNet();
+
+
 
 	
 	#define NUM 3

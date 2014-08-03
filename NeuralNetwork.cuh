@@ -40,4 +40,52 @@ void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learn
 */
 void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate);
 
+class FFNet
+{
+public:
+	FFNet(void);
+
+	void randomTrain(int iterations);
+	void orderedTrain(int iterations);
+	float validate();
+
+	void createNN(int* layerSize, int numLayers, float learningRate, float momentum);
+
+	void setLearningRate(float learningRate);
+	void setMomentum(float momentum);
+
+	void setTrainingData(float* inputs, float* outputs, int setSize, int numSets, int outputsPerSet);
+	void setValidationData(float* inputs, float* outputs, int setSize, int numSets, int outputsPerSet);
+
+	~FFNet(void);
+
+private:
+	float learningRate;
+	int numLayers;
+	int* hostLayerSize;
+
+	float* devNeuronWeights;
+	float* devNeuronOutputs;
+	float* devNeuronErrors;
+	float* devDefaultOutputs;
+	float* devWeightDeltas;
+	int* devLayerSize;
+
+	float* devTrainingInputs;
+	float* devTrainingOutputs;
+
+	int setSize;
+	int numItems;
+	int numOutputs;
+
+	void forwardPropagation(unsigned int index);
+	void backPropagation(unsigned int index);
+};
+
+class RecurrentNet
+{
+
+
+};
+
 #endif
