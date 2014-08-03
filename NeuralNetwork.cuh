@@ -11,18 +11,13 @@ struct NNInfo
 	int numWeights;
 };
 
-void display(cudaSurfaceObject_t cudaSurfaceObject, int width, int height, int* layerSize, int numLayers);
-void createNN(int* layerSize, int numLayers);
-
 /*
 	inputs : a flat array of input data
 	setSize : number of floats in the array making up one input
 	numItems : total number of inputs
 	numOutputs : number of outputs per input
 */
-void setTrainingData(float* inputs, float* outputs,int setSize, int numItems, int numOutputs);
-
-void setTrainingData(float* inputs, float* outputs, NNInfo info);
+//void setTrainingData(float* inputs, float* outputs,int setSize, int numItems, int numOutputs);
 
 /*
 	layerSize : host array of layer sizes
@@ -30,7 +25,7 @@ void setTrainingData(float* inputs, float* outputs, NNInfo info);
 	iterations : the number of iterations through the input set
 	learningRate : how fast the neural net learns, set between 0.3 and 0.8
 */
-void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate);
+//void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate);
 
 /*
 	layerSize : host array of layer sizes
@@ -38,7 +33,7 @@ void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learn
 	iterations : the number of iterations through the input set
 	learningRate : how fast the neural net learns, set between 0.3 and 0.8
 */
-void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate);
+//void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate);
 
 class FFNet
 {
@@ -49,14 +44,14 @@ public:
 	void orderedTrain(int iterations);
 	float validate();
 
-	void createNN(int* layerSize, int numLayers, float learningRate, float momentum);
+	void createNN(int* layerSize, int numLayers);
 
 	void setLearningRate(float learningRate);
 	void setMomentum(float momentum);
 
-	void setTrainingData(float* inputs, float* outputs, int setSize, int numSets, int outputsPerSet);
-	void setValidationData(float* inputs, float* outputs, int setSize, int numSets, int outputsPerSet);
-
+	void setTrainingData(float* inputs, float* outputs, int numInputs, int numSets, int numOutputs);
+	void setValidationData(float* inputs, float* outputs, int numInputs, int numSets, int numOutputs);
+	
 	~FFNet(void);
 
 private:
@@ -71,15 +66,22 @@ private:
 	float* devWeightDeltas;
 	int* devLayerSize;
 
+	int neuronArrayLength;
+	int weightArrayLength;
+
 	float* devTrainingInputs;
 	float* devTrainingOutputs;
 
-	int setSize;
-	int numItems;
+	int numInputs;
+	int numSets;
 	int numOutputs;
 
 	void forwardPropagation(unsigned int index);
 	void backPropagation(unsigned int index);
+	void printResults(unsigned int index);
+
+	void display(cudaSurfaceObject_t cudaSurfaceObject, int width, int height, int* hostLayerSize, int numLayers);
+	float* getWeightArray(int* hostLayerSize, int numLayers);
 };
 
 class RecurrentNet

@@ -32,39 +32,41 @@ int main()
 	float* inputs = nullptr;
 	float* outputs = nullptr;
 	int numSets;
-	int setSize;
-	int outputsPerSet;
+	int numInputs;
+	int numOutputs;
 
 	loadMNIST("Data/timages.mnist", 
 		"Data/tlabels.mnist",
 		&inputs, &outputs, 
-		&numSets, &setSize, &outputsPerSet);
+		&numSets, &numInputs, &numOutputs);
 
 	printf("%f", outputs[5]);
 
 	FFNet network = FFNet();
 
+//	network.createNN(layerSize, numLayers);
+//	network.setTrainingData(inputs, outputs, numInputs, numSets, numOutputs);
 
+//	network.randomTrain(1000);
 
 	
 	#define NUM 3
-	#define NUMIN 16
 	
 	int numLayers = NUM;
 	int layerSize[NUM];
 
-	layerSize[0] = setSize;
+	layerSize[0] = numInputs;
 	layerSize[1] = 400;
-	layerSize[2] = outputsPerSet;
+	layerSize[2] = numOutputs;
 
-	for(int i =0; i < NUM-1; i++) //+1 for biases
+	for(int i =0; i < numLayers-1; i++) //+1 for biases
 	{
 		layerSize[i]++;
 	}
 	
-	createNN(layerSize, numLayers);
+//	createNN(layerSize, numLayers);
 
-	setTrainingData(inputs, outputs, setSize, numSets, outputsPerSet);
+//	setTrainingData(inputs, outputs, numInputs, numSets, numOutputs);
 
 	Timer timer = Timer();
 	int iterations = 5000;
@@ -74,7 +76,7 @@ int main()
 	while(true)
 	{
 		timer.start();
-		randomTrain(layerSize, numLayers, iterations, 0.5f);
+//		randomTrain(layerSize, numLayers, iterations, 0.5f);
 		timer.stop();
 
 		count++;
@@ -83,7 +85,7 @@ int main()
 
 		if(count % amt == -1)
 		{
-			display(displayWindow.getCUDASurfaceObject(), WIDTH, HEIGHT, layerSize, numLayers);
+//			display(displayWindow.getCUDASurfaceObject(), WIDTH, HEIGHT, layerSize, numLayers);
 			displayWindow.destroySO();
 		}
 		displayWindow.displayFrame(window);

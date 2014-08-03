@@ -379,180 +379,17 @@ __global__ void initOutputs(float* neurons, int length , int* layerSize, int num
 }
 
 
-float* devNeuronWeights;
-float* devNeuronOutputs;
-float* devNeuronErrors;
-float* devDefaultOutputs;
-float* devWeightDeltas;
-int* devLayerSize;
 
-void createNN(int* layerSize, int numLayers)
-{
-	int arrayLength = getArrayOffset(layerSize,numLayers);
-	int weightArrayLength = getWeightOffset(layerSize,numLayers-1, numLayers);
-
-	cudaMalloc((void**)&devNeuronOutputs, sizeof(float)* arrayLength);
-	cudaMalloc((void**)&devDefaultOutputs, sizeof(float)* arrayLength);
-	cudaMalloc((void**)&devNeuronErrors, sizeof(float)* arrayLength);
-	cudaMalloc((void**)&devNeuronWeights, sizeof(float)* weightArrayLength);
-	cudaMalloc((void**)&devWeightDeltas, sizeof(float)* weightArrayLength);
-	cudaMalloc((void**)&devLayerSize, sizeof(int)*numLayers);
-
-	cudaMemcpy(devLayerSize, layerSize, sizeof(int)*numLayers, cudaMemcpyHostToDevice);
-
-	dim3 blockSize = dim3(256);
-	dim3 gridSize = dim3((arrayLength + blockSize.x -1)/blockSize.x);
-	initOutputs<<<gridSize, blockSize>>>(devNeuronOutputs, arrayLength, devLayerSize, numLayers);
-	cudaMemcpy(devDefaultOutputs, devNeuronOutputs, sizeof(float)*arrayLength, cudaMemcpyDeviceToDevice);
-
-	srand(time(NULL));
-
-	float* hostNeuronWeights = (float*)malloc(weightArrayLength*sizeof(float));
-	for(int i =0; i < weightArrayLength; i++)
-	{
-		hostNeuronWeights[i] = (rand()%10000-5000)/10000.0f;  //random weights between -0.5 and 0.5
-	}
-	cudaMemcpy(devNeuronWeights, hostNeuronWeights, sizeof(float)*weightArrayLength, cudaMemcpyHostToDevice);
-	free(hostNeuronWeights);
-
-	cudaMemset(devWeightDeltas, 0, sizeof(float)*weightArrayLength);
-}
-
-
-float* devTrainingInputs;
-float* devTrainingOutputs;
-int devSetSize;
-int devNumItems;
-int devNumOutputs;
-
-/*
-	inputs : an array of input data
-	inputs : an array of ouput data
-	setSize : number of items in the input array making up one set of inputs
-	numItems : total number of input sets
-	numOutputs : number of outputs per input
-*/
-void setTrainingData(float* inputs, float* outputs,int setSize, int numItems, int numOutputs)
-{
-	cudaMalloc((void**)&devTrainingInputs, sizeof(float)*setSize*numItems);
-	cudaMalloc((void**)&devTrainingOutputs, sizeof(float)*numOutputs*numItems);
-
-	cudaMemcpy(devTrainingInputs, inputs, sizeof(float)*setSize*numItems, cudaMemcpyHostToDevice);
-	cudaMemcpy(devTrainingOutputs, outputs, sizeof(float)*numOutputs*numItems, cudaMemcpyHostToDevice);
-
-	devSetSize = setSize;
-	devNumItems = numItems;
-	devNumOutputs = numOutputs;
-}
 
 int getGridSize(unsigned int minimumSize, unsigned int blockSize)
 {
 	return (minimumSize + blockSize - 1)/blockSize;
 }
 
-void forwardPropagation(unsigned int n, int numLayers, int* hostLayerSize, int outputArrayLength)
-{
-	dim3 blockSize;
-	dim3 gridSize;
-
-	cudaMemcpy(devNeuronOutputs, devDefaultOutputs, sizeof(float)*outputArrayLength, cudaMemcpyDeviceToDevice); //set devNeuronOutputs to defaults
-	cudaMemcpy(devNeuronOutputs, devTrainingInputs + n*devSetSize, sizeof(float)*devSetSize, cudaMemcpyDeviceToDevice); //Set the inputs
-
-	for(int i = 0; i < numLayers -1; i++)
-	{
-		blockSize = dim3(32, 32);
-		gridSize = dim3(getGridSize(hostLayerSize[i+1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
-
-		parallelNNOutput<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devLayerSize, numLayers, i);
-		applyActivationFunction<<<getGridSize(hostLayerSize[i+1], 128), 128>>>(devNeuronOutputs, devLayerSize, numLayers, i);
-	}
-}
-
-void backPropagation(unsigned int n, int numLayers, int* hostLayerSize, int outputArrayLength, float learningRate)
-{
-	dim3 blockSize;
-	dim3 gridSize;
-
-	cudaMemset(devNeuronErrors, 0, sizeof(float)*outputArrayLength);
-
-	blockSize = dim3(128);
-	gridSize = dim3(getGridSize(hostLayerSize[numLayers-1], blockSize.x));
-
-	calculateOutputLayerError<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronErrors, &devTrainingOutputs[n*devNumOutputs], devLayerSize, numLayers);
-
-	for(int i = numLayers - 1;i > 0; i--)
-	{
-		blockSize = dim3(32, 32);
-		gridSize = dim3(getGridSize(hostLayerSize[i-1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
-
-		calculateError<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronErrors, devNeuronWeights, devLayerSize, numLayers, i);
-		updateWeights<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devNeuronErrors, devWeightDeltas, devLayerSize, numLayers, i, learningRate);
-	}
-}
-
-/*
-	layerSize : host array of layer sizes
-	numLayers : number of layers
-	iterations : the number of iterations through the input set
-	learningRate : how fast the neural net learns, set between 0.3 and 0.8
-*/
-void orderedTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate)
-{
-	int outputArrayLength = getArrayOffset(hostLayerSize,numLayers);
-
-	for(int setItertion =0; setItertion < iterations; setItertion++)
-	{
-		for(int n = 0; n < devNumItems; n++)
-		{
-			forwardPropagation(n, numLayers, hostLayerSize, outputArrayLength);
-			backPropagation(n, numLayers, hostLayerSize, outputArrayLength, learningRate);		
-		}
-	}
-}
-
-void printResults(unsigned int n, int* hostLayerSize, int numLayers, int outputSize)
-{
-	float* expected = (float*)malloc(sizeof(float) * outputSize);
-	float* actual = (float*)malloc(sizeof(float) * outputSize);
-
-	cudaMemcpy(expected, &devTrainingOutputs[n*devNumOutputs], sizeof(float)*outputSize, cudaMemcpyDeviceToHost);
-	cudaMemcpy(actual, &devNeuronOutputs[getArrayOffset(hostLayerSize,numLayers-1)], sizeof(float)*outputSize, cudaMemcpyDeviceToHost);
-
-	for(int i =0; i < outputSize; i++)
-	{
-		printf("%d|	e(%f) : a(%f)\n", i, expected[i], actual[i]);
-	}
-
-	printf("\n");
-
-	free(expected);
-	free(actual);
-}
-
-void randomTrain(int* hostLayerSize, int numLayers, int iterations, float learningRate)
-{
-	int outputArrayLength = getArrayOffset(hostLayerSize,numLayers);
-
-	for(int setItertion =0; setItertion < iterations; setItertion++)
-	{
-		unsigned int n = (unsigned int)((rand() * (RAND_MAX+1) + rand()))% 10;
-
-		forwardPropagation(n, numLayers, hostLayerSize, outputArrayLength);
-
-		if(rand() % 1000 == 0)
-		{
-			printf("Index: %d\n", n);
-			printf("Size: %d\n", devNumItems);
-
-			printResults(n, hostLayerSize, numLayers, 10);
-		}
-
-		backPropagation(n, numLayers, hostLayerSize, outputArrayLength, learningRate);		
-	}
-}
 
 
-float* getWeightArray(int* hostLayerSize, int numLayers)
+
+float* FFNet::getWeightArray(int* hostLayerSize, int numLayers)
 {
 	int weightArrayLength = getWeightOffset(hostLayerSize, numLayers-1, numLayers);
 
@@ -562,7 +399,7 @@ float* getWeightArray(int* hostLayerSize, int numLayers)
 	return weights;
 }
 
-void display(cudaSurfaceObject_t cudaSurfaceObject, int width, int height, int* hostLayerSize, int numLayers)
+void FFNet::display(cudaSurfaceObject_t cudaSurfaceObject, int width, int height, int* hostLayerSize, int numLayers)
 {
 	dim3 blockSize = dim3(16,16);
 	int xGridSize = (width + blockSize.x-1)/blockSize.x; 
@@ -592,7 +429,143 @@ FFNet::FFNet(void)
 
 	devTrainingInputs = NULL;
 	devTrainingOutputs = NULL;
+
+	learningRate = 0.5f;
 }
+
+
+void FFNet::randomTrain(int iterations)
+{
+	int outputArrayLength = getArrayOffset(hostLayerSize,numLayers);
+
+	for(int setItertion =0; setItertion < iterations; setItertion++)
+	{
+		unsigned int n = (unsigned int)((rand() * (RAND_MAX+1) + rand()))% 10;
+
+		forwardPropagation(n);
+
+		if(rand() % 1000 == 0)
+		{
+			printf("Index: %d\n", n);
+			printf("Size: %d\n", numSets);
+
+			printResults(n);
+		}
+
+		backPropagation(n);		
+	}
+}
+
+
+
+
+void FFNet::forwardPropagation(unsigned int index)
+{
+	dim3 blockSize;
+	dim3 gridSize;
+
+	cudaMemcpy(devNeuronOutputs, devDefaultOutputs, sizeof(float)*neuronArrayLength, cudaMemcpyDeviceToDevice); //set devNeuronOutputs to defaults
+	cudaMemcpy(devNeuronOutputs, devTrainingInputs + index*numOutputs, sizeof(float)*numSets, cudaMemcpyDeviceToDevice); //Set the inputs
+
+	for(int i = 0; i < numLayers -1; i++)
+	{
+		blockSize = dim3(32, 32);
+		gridSize = dim3(getGridSize(hostLayerSize[i+1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
+
+		parallelNNOutput<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devLayerSize, numLayers, i);
+		applyActivationFunction<<<getGridSize(hostLayerSize[i+1], 128), 128>>>(devNeuronOutputs, devLayerSize, numLayers, i);
+	}
+}
+
+void FFNet::backPropagation(unsigned int index)
+{
+	dim3 blockSize;
+	dim3 gridSize;
+
+	cudaMemset(devNeuronErrors, 0, sizeof(float)*neuronArrayLength);
+
+	blockSize = dim3(128);
+	gridSize = dim3(getGridSize(hostLayerSize[numLayers-1], blockSize.x));
+
+	calculateOutputLayerError<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronErrors, &devTrainingOutputs[index*numOutputs], devLayerSize, numLayers);
+
+	for(int i = numLayers - 1;i > 0; i--)
+	{
+		blockSize = dim3(32, 32);
+		gridSize = dim3(getGridSize(hostLayerSize[i-1], blockSize.x), getGridSize(hostLayerSize[i], blockSize.y));
+
+		calculateError<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronErrors, devNeuronWeights, devLayerSize, numLayers, i);
+		updateWeights<<<gridSize, blockSize>>>(devNeuronOutputs, devNeuronWeights, devNeuronErrors, devWeightDeltas, devLayerSize, numLayers, i, learningRate);
+	}
+}
+
+
+void FFNet::printResults(unsigned int index)
+{
+	float* expected = (float*)malloc(sizeof(float) * numOutputs);
+	float* actual = (float*)malloc(sizeof(float) * numOutputs);
+
+	cudaMemcpy(expected, &devTrainingOutputs[index*numOutputs], sizeof(float)*numOutputs, cudaMemcpyDeviceToHost);
+	cudaMemcpy(actual, &devNeuronOutputs[getArrayOffset(hostLayerSize,numLayers-1)], sizeof(float)*numOutputs, cudaMemcpyDeviceToHost);
+
+	for(int i =0; i < numOutputs; i++)
+	{
+		printf("%d|	e(%f) : a(%f)\n", i, expected[i], actual[i]);
+	}
+
+	printf("\n");
+
+	free(expected);
+	free(actual);
+}
+
+void FFNet::createNN(int* layerSize, int numLayers)
+{
+	hostLayerSize = layerSize;
+	this->numLayers = numLayers;
+	neuronArrayLength = getArrayOffset(layerSize,numLayers);
+	weightArrayLength = getWeightOffset(layerSize,numLayers-1, numLayers);
+
+	cudaMalloc((void**)&devNeuronOutputs, sizeof(float)* neuronArrayLength);
+	cudaMalloc((void**)&devDefaultOutputs, sizeof(float)* neuronArrayLength);
+	cudaMalloc((void**)&devNeuronErrors, sizeof(float)* neuronArrayLength);
+	cudaMalloc((void**)&devNeuronWeights, sizeof(float)* weightArrayLength);
+	cudaMalloc((void**)&devWeightDeltas, sizeof(float)* weightArrayLength);
+	cudaMalloc((void**)&devLayerSize, sizeof(int)*numLayers);
+
+	cudaMemcpy(devLayerSize, layerSize, sizeof(int)*numLayers, cudaMemcpyHostToDevice);
+
+	dim3 blockSize = dim3(256);
+	dim3 gridSize = dim3((neuronArrayLength + blockSize.x -1)/blockSize.x);
+	initOutputs<<<gridSize, blockSize>>>(devNeuronOutputs, neuronArrayLength, devLayerSize, numLayers);
+	cudaMemcpy(devDefaultOutputs, devNeuronOutputs, sizeof(float)*neuronArrayLength, cudaMemcpyDeviceToDevice);
+
+	srand(time(NULL));
+
+	float* hostNeuronWeights = (float*)malloc(weightArrayLength*sizeof(float));
+	for(int i =0; i < weightArrayLength; i++)
+	{
+		hostNeuronWeights[i] = (rand()%10000-5000)/10000.0f;  //random weights between -0.5 and 0.5
+	}
+	cudaMemcpy(devNeuronWeights, hostNeuronWeights, sizeof(float)*weightArrayLength, cudaMemcpyHostToDevice);
+	free(hostNeuronWeights);
+
+	cudaMemset(devWeightDeltas, 0, sizeof(float)*weightArrayLength);
+}
+
+void FFNet::setTrainingData(float* inputs, float* outputs,int numInputs, int numSets, int numOutputs)
+{
+	this->numInputs = numInputs;
+	this->numSets = numSets;
+	this->numOutputs = numOutputs;
+
+	cudaMalloc((void**)&devTrainingInputs, sizeof(float)*numInputs*numSets);
+	cudaMalloc((void**)&devTrainingOutputs, sizeof(float)*numOutputs*numSets);
+
+	cudaMemcpy(devTrainingInputs, inputs, sizeof(float)*numInputs*numSets, cudaMemcpyHostToDevice);
+	cudaMemcpy(devTrainingOutputs, outputs, sizeof(float)*numOutputs*numSets, cudaMemcpyHostToDevice);
+}
+
 
 
 FFNet::~FFNet(void)
